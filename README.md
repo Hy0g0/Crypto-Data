@@ -28,6 +28,7 @@ helm repo update
 helm install prometheus-operator prometheus-community/kube-prometheus-stack \
   --namespace default \
   --create-namespace
+  --values prometheus-values.yaml
 ```
 Install the Redpanda Helm chart to deploy a Redpanda cluster and Redpanda Console.
 
