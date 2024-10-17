@@ -12,6 +12,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Secret Scanning
         uses: trufflesecurity/trufflehog@main
         with:
@@ -39,4 +40,4 @@ jobs:
 
       - name: Run kube-score validation
         run: |
-          ./run_kube_score.sh
+          kube-score score *.yaml
