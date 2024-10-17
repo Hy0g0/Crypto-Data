@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda-producer
+  template:
+    metadata:
+      labels:
+        app: redpanda-producer
+    spec:
+      containers:
+        - name: redpanda-producer
+          image : redpanda-producer:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+          volumeMounts:
+            - name: tls-certificates
+              mountPath: /user-secret
+              readOnly: true
+      volumes:
+        - name: tls-certificates
+          secret:
+            secretName: redpanda-default-cert

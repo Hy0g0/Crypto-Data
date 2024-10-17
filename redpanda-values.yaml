@@ -27,7 +27,7 @@
 # -- Override `redpanda.name` template.
 nameOverride: ""
 # -- Override `redpanda.fullname` template.
-fullnameOverride: ""
+fullnameOverride: "redpanda"
 # -- Default Kubernetes cluster domain.
 clusterDomain: cluster.local
 # -- Additional labels to add to all Kubernetes objects.
@@ -178,7 +178,7 @@ auth:
     mechanism: SCRAM-SHA-512
     # -- A Secret that contains your superuser credentials.
     # For details,
-    # see the [SASL documentation](https://docs.redpanda.com/docs/manage/kubernetes/security/sasl-kubernetes/#use-secrets).
+    # see the [SASL documentation](https://docs.redpanda.com/docs/manage/kubernetes/security/sasl-kubernkafkaetes/#use-secrets).
     secretRef: "redpanda-users"
     # -- Optional list of superusers.
     # These superusers will be created in the Secret whose name is defined in `auth.sasl.secretRef`.
@@ -210,7 +210,7 @@ tls:
   # To allow you to enable TLS for individual listeners,
   # Certificates in `auth.tls.certs` are always loaded, even if `tls.enabled` is `false`.
   # See `listeners.<listener-name>.tls.enabled`.
-  enabled: true
+  enabled: false
   # -- List all Certificates here,
   # then you can reference a specific Certificate's name
   # in each listener's `listeners.<listener name>.tls.cert` setting.
@@ -297,10 +297,10 @@ external:
   # If external.domain is set, the domain is appended to these values.
   # There is an option to define a single external address for all brokers and leverage
   # prefixTemplate as it will be calculated during initContainer execution.
-  # addresses:
-  # - redpanda-0
-  # - redpanda-1
-  # - redpanda-2
+  addresses:
+   - redpanda-0
+   - redpanda-1
+   - redpanda-2
   #
   # annotations:
     # For example:
@@ -952,15 +952,11 @@ listeners:
       requireClientAuth: false
   # -- Kafka API listeners.
   kafka:
-    # -- The port for internal client connections.
     port: 9093
-    # default is "sasl"
-    authenticationMethod:
+    authenticationMethod: null
     tls:
-      # Optional flag to override the global TLS enabled flag.
-      # enabled: true
+      requireClientAuth: false  # Only set to true if using mTLS
       cert: default
-      requireClientAuth: false
     external:
       default:
         # enabled: true
@@ -974,7 +970,7 @@ listeners:
           # enabled: true
           cert: external
         # default is "sasl"
-        authenticationMethod:
+        authenticationMethod: null
   # -- RPC listener (this is never externally accessible).
   rpc:
     port: 33145

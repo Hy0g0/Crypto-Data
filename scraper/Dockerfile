@@ -11,10 +11,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your scraper code into the container
-COPY scraper.py .
+COPY jina_scraper.py .
 
 # Set the environment variable for unbuffered output
 ENV PYTHONUNBUFFERED=1
 
+VOLUME [ "/user-secret" ]
 # Command to run your scraper
-CMD ["python", "scraper.py"]
+CMD ["python", "jina_scraper.py"]
