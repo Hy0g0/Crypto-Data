@@ -1,5 +1,18 @@
 # Crypto-Data
 
+# TODO
+
+- [x] Create basic readme to allow all group to use and work on project
+- [x] Create python scraper to get cryptos
+- [x] Make scraper push in redpanda using kafka API
+- [x] Add monitoring to Kube cluster and Redpanda
+- [x] Deploy redpanda cluster with wright configuration
+- [ ] Add distributed Database to save transformed data (cassandra,scyllaDB,CockroachDB)
+- [ ] Update readme with redpanda dashboard creation
+- [ ] Investigate Clickhouse project to find if it fits our plans
+- [ ] Create final front to display our datas
+- [ ] Create Consumer to transform data and push it in DB
+
 ## Setup ## 
 
 Install cert-manager using Helm:
