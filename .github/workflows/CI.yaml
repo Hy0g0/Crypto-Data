@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret Scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+  kube-score:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Kubernetes tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kubectl
+          
+          # Install kube-score safely
+          KUBE_SCORE_VERSION="1.17.0" # Ensure this is the correct version
+          curl -LO https://github.com/zegl/kube-score/releases/download/v$KUBE_SCORE_VERSION/kube-score_${KUBE_SCORE_VERSION}_linux_amd64
+          chmod +x kube-score_${KUBE_SCORE_VERSION}_linux_amd64
+          sudo mv kube-score_${KUBE_SCORE_VERSION}_linux_amd64 /usr/local/bin/kube-score
+          
+          # Install yq safely
+          sudo snap install yq
+
+      - name: Run kube-score validation
+        run: |
+          ./run_kube_score.sh
