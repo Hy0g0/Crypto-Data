@@ -77,7 +77,7 @@ kubectl apply -f redpanda-servicemonitor.yaml
 ### create topic 
 
 ```bash
-kubectl exec -it redpanda-0 -n redpanda -- rpk topic create crypto --partitions 3
+kubectl exec -it redpanda-0 -n redpanda -- rpk topic create crypto-prices --partitions 3 -c compression.type=lz4 
 ```
 
 ### create producer
