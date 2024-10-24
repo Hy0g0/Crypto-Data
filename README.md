@@ -12,6 +12,12 @@
 - [ ] Investigate Clickhouse project to find if it fits our plans
 - [ ] Create final front to display our datas
 - [ ] Create Consumer to transform data and push it in DB
+- [ ] Improve cluster security to protect our datas (follow kubescore advices add security scans and enhance docker image creation)
+
+## Diagram ## 
+
+![Diagram](./images/schema.svg)
+
 
 ## Setup ## 
 
@@ -83,7 +89,7 @@ kubectl exec -it redpanda-0 -n redpanda -- rpk topic create crypto-prices --part
 ### create producer
 
 ``` bash
-docker build -t redpanda-producer:latest ./scraper  
+docker build -t redpanda-producer:1.0.0 ./scraper  
 ```
 
 ``` bash
