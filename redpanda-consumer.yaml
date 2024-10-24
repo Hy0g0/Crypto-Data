@@ -1,20 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redpanda-producer
+  name: redpanda-consumer
+  namespace: redpanda
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redpanda-producer
+      app: redpanda-consumer
   template:
     metadata:
       labels:
-        app: redpanda-producer
+        app: redpanda-consumer
     spec:
       containers:
-        - name: redpanda-producer
-          image: redpanda-producer:1.0.0
+        - name: redpanda-consumer
+          image: redpanda-consumer:1.0.0
           imagePullPolicy: IfNotPresent
           resources:
             limits:
