@@ -11,7 +11,7 @@ spec:
     targetRevision: 30.1.6               # Specify the Kafka Helm chart version
     helm:
       valueFiles:
-        - kafka-values.yaml                      # Custom values file for Kafka configuration
+        - ./kafka-values.yaml                      # Custom values file for Kafka configuration
   destination:
     server: https://kubernetes.default.svc       # Kubernetes API server
     namespace: kafka                             # Namespace to deploy Kafka
