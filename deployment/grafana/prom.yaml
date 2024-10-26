@@ -10,9 +10,8 @@ spec:
     chart: kafka                                 # Specify the Helm chart name
     targetRevision: 4.40.0               # Specify the Kafka Helm chart version
     helm:
-      parameters:
-        valueFiles:
-          - prometheus-values.yaml            # Custom values file for Kafka configuration
+      valueFiles:
+        - prometheus-values.yaml            # Custom values file for Kafka configuration
   destination:
     server: https://kubernetes.default.svc       # Kubernetes API server
     namespace: grafana                             # Namespace to deploy Kafka
