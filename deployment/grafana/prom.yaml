@@ -8,10 +8,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts   # Prometheus Community Helm repository
     chart: kube-prometheus-stack                                 # Chart name
-    targetRevision: 51.4.0                                       # Specify the desired version
-    helm:
-      valueFiles:
-        - prometheus-values.yaml                                 # Custom values file
+    targetRevision: 51.4.0                                       # Specify the desired version                             # Custom values file
   destination:
     server: https://kubernetes.default.svc                       # Kubernetes API server
     namespace: default                                           # Namespace to deploy to
