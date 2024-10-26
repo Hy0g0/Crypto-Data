@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts   # Use the Bitnami Helm repository URL
+    chart: kafka                                 # Specify the Helm chart name
+    targetRevision: 4.40.0               # Specify the Kafka Helm chart version
+    helm:
+      parameters:
+        valueFiles:
+          - prometheus-values.yaml            # Custom values file for Kafka configuration
+  destination:
+    server: https://kubernetes.default.svc       # Kubernetes API server
+    namespace: grafana                             # Namespace to deploy Kafka
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,9 @@
+additionalScrapeConfigs:
+  name: redpanda-scrape-config
+  config:
+    scrape_configs:
+      - job_name: redpanda-metrics
+        static_configs:
+          - targets:
+              - redpanda.redpanda.svc.cluster.local:9644
+        metrics_path: /metrics
