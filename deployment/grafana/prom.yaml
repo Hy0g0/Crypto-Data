@@ -11,7 +11,7 @@ spec:
     targetRevision: 51.4.0                                       # Specify the desired version                             # Custom values file
   destination:
     server: https://kubernetes.default.svc                       # Kubernetes API server
-    namespace: default                                           # Namespace to deploy to
+    namespace: grafana                                           # Namespace to deploy to
   syncPolicy:
     automated:
       prune: true
