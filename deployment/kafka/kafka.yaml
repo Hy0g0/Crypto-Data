@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://charts.bitnami.com/bitnami
+    repoURL: https://github.com/bitnami/charts/tree/main/bitnami/kafka
     chart: kafka  # Specify the Helm chart name
     targetRevision: latest
     helm:
