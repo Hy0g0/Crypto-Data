@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://registry-1.docker.io/bitnamicharts/kafka
-    targetRevision: HEAD
-    path: kafka
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: kafka  # Specify the Helm chart name
+    targetRevision: latest
     helm:
       valueFiles:
         - kafka-values.yaml
