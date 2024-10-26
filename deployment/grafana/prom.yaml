@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://prometheus-community.github.io/helm-charts   # Use the Bitnami Helm repository URL
-    chart: kafka                                 # Specify the Helm chart name
+    chart: prometheus-operator            # Specify the Helm chart name
     targetRevision: 4.40.0               # Specify the Kafka Helm chart version
     helm:
       valueFiles:
