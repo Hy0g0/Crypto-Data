@@ -9,9 +9,6 @@ spec:
     repoURL: https://prometheus-community.github.io/helm-charts   # Use the Bitnami Helm repository URL
     chart: prometheus-operator            # Specify the Helm chart name
     targetRevision: 6.0.0           # Specify the Kafka Helm chart version
-    helm:
-      valueFiles:
-        - prometheus-values.yaml            # Custom values file for Kafka configuration
   destination:
     server: https://kubernetes.default.svc       # Kubernetes API server
     namespace: grafana                             # Namespace to deploy Kafka
