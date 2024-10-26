@@ -49,6 +49,12 @@ helm install prometheus-operator prometheus-community/kube-prometheus-stack \
   --create-namespace
   --values prometheus-values.yaml
 ```
+
+
+get grafana admin password
+```bash
+sudo kubectl get secret --namespace default prometheus-operator-grafana  -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
 Install the Redpanda Helm chart to deploy a Redpanda cluster and Redpanda Console.
 
 
@@ -62,6 +68,12 @@ helm install redpanda redpanda/redpanda \
   --values redpanda-values.yaml
 ```
 
+```bash
+helm install my-release oci://registry-1.docker.io/bitnamicharts/kafka \
+  --namespace kafka \
+  --create-namespace \
+  --values kafka-values.yaml
+```
 
 ## OPS ##
 

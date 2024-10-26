@@ -4,7 +4,7 @@ import clickhouse_connect
 
 # Configuration for the Kafka Consumer
 kafka_conf = {
-    'bootstrap.servers': 'redpanda.redpanda.svc.cluster.local:9094',
+    'bootstrap.servers': 'kafka.kafka.svc.cluster.local:9094',
     'group.id': 'crypto-consumer-group',
     'auto.offset.reset': 'earliest',
 }

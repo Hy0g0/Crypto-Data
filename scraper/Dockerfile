@@ -1,21 +1,24 @@
-# Use an official Python runtime as a base image
-FROM python:3.9-slim
+# Stage 1: Build the Go application with librdkafka for ARM64
+FROM golang:1.23 AS builder
 
-# Set the working directory in the container
+# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy the requirements.txt file into the container
-COPY requirements.txt .
+# Copy go.mod and go.sum files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the source code into the container
+COPY . .
 
-# Copy the rest of your scraper code into the container
-COPY jina_scraper.py .
+# Build the Go application for ARM64 with CGO_ENABLED=1 to link against librdkafka
+RUN go build -o kafka-producer .
 
-# Set the environment variable for unbuffered output
-ENV PYTHONUNBUFFERED=1
+# Stage 2: Run the Go application in a minimal container
+FROM alpine:latest
 
-VOLUME [ "/user-secret" ]
-# Command to run your scraper
-CMD ["python", "jina_scraper.py"]
+# Copy the built Go binary from the builder stage
+COPY --from=builder /app/kafka-producer /kafka-producer
+
+# Command to run the executable
+ENTRYPOINT ["/kafka-producer"]
