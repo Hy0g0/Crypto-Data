@@ -55,36 +55,19 @@ func createKafkaProducer() (sarama.SyncProducer, error) {
 }
 
 func fetchCryptoData() ([]CryptoData, error) {
-	req, err := http.NewRequest("GET", BASE_URL, nil)
+	resp, err := http.Get("https://api.coincap.io/v2/assets")
 	if err != nil {
-		return nil, fmt.Errorf("erreur création requête: %v", err)
-	}
-
-	// Ajouter l'en-tête d'autorisation
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", API_KEY))
-
-	// Paramètres de requête
-	q := req.URL.Query()
-	q.Add("limit", "100")
-	req.URL.RawQuery = q.Encode()
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("erreur requête API: %v", err)
+		time.Sleep(1 * time.Millisecond)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("statut HTTP invalide: %d", resp.StatusCode)
-	}
-
 	var response CoinCapResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("erreur parsing JSON: %v", err)
+		time.Sleep(1 * time.Millisecond)
+		return nil, err
 	}
 
-	log.Printf("✅ Récupéré %d cryptomonnaies", len(response.Data))
 	return response.Data, nil
 }
 
@@ -145,7 +128,7 @@ func main() {
 		cryptos, err := fetchCryptoData()
 		if err != nil {
 			log.Printf("❌ Erreur récupération données: %v", err)
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Millisecond)
 			continue
 		}
 
@@ -155,7 +138,7 @@ func main() {
 			}
 		}
 
-		log.Printf("💤 Attente de 10 secondes avant la prochaine mise à jour...")
-		time.Sleep(10 * time.Second)
+		log.Printf("💤 Attente de 1ms avant la prochaine mise à jour...")
+		time.Sleep(1 * time.Millisecond)
 	}
 }
