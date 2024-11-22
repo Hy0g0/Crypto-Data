@@ -3,105 +3,159 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"net/http"
-	"regexp"
 	"time"
-
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/Shopify/sarama"
 )
 
-type CryptoPrice struct {
-	Crypto string `json:"crypto"`
-	Price  string `json:"price"`
-	Site   string `json:"site"`
+type CoinCapResponse struct {
+	Data []CryptoData `json:"data"`
+	Timestamp int64   `json:"timestamp"`
 }
 
-func main() {
-	// Kafka producer configuration
-	config := &kafka.ConfigMap{
-		"bootstrap.servers": "kafka.kafka.svc.cluster.local:9094",
-		"client.id":         "crypto-price-producer",
-		"acks":              "all",
-	}
-
-	producer, err := kafka.NewProducer(config)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create producer: %s", err))
-	}
-	defer producer.Close()
-
-	// Start the scraping and sending loop
-	for {
-		scrapeAndSend(producer)
-		time.Sleep(1 * time.Second)
-	}
+type CryptoData struct {
+	ID               string  `json:"id"`
+	Symbol           string  `json:"symbol"`
+	Name             string  `json:"name"`
+	CurrentPrice     float64 `json:"priceUsd,string"`
+	MarketCap        float64 `json:"marketCapUsd,string"`
+	Volume24h        float64 `json:"volumeUsd24Hr,string"`
+	PriceChange24h   float64 `json:"changePercent24Hr,string"`
+	LastUpdated      string  `json:"timestamp"`
 }
 
-func scrapeAndSend(producer *kafka.Producer) {
-	url := "https://r.jina.ai/https://www.livecoinwatch.com/"
+const (
+	BASE_URL = "https://api.coincap.io/v2/assets"
+	API_KEY  = "3282b43d-5f58-41de-a300-e049cc2fce0b"  // Obtenez une clé sur https://coincap.io/api-key
+)
 
-	// Perform the HTTP GET request
-	resp, err := http.Get(url)
+func createKafkaProducer() (sarama.SyncProducer, error) {
+	log.Printf("🔄 Configuration du producteur Kafka...")
+	
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Retry.Max = 5
+	
+	brokers := []string{"kafka:29092"}
+	log.Printf("📍 Tentative de connexion aux brokers: %v", brokers)
+	
+	var producer sarama.SyncProducer
+	var err error
+	for i := 0; i < 5; i++ {
+		producer, err = sarama.NewSyncProducer(brokers, config)
+		if err == nil {
+			return producer, nil
+		}
+		log.Printf("Tentative %d échouée: %v. Nouvelle tentative dans 5 secondes...", i+1, err)
+		time.Sleep(5 * time.Second)
+	}
+	return nil, fmt.Errorf("erreur création producteur après 5 tentatives: %v", err)
+}
+
+func fetchCryptoData() ([]CryptoData, error) {
+	req, err := http.NewRequest("GET", BASE_URL, nil)
 	if err != nil {
-		fmt.Printf("Failed to fetch data: %v\n", err)
-		return
+		return nil, fmt.Errorf("erreur création requête: %v", err)
+	}
+
+	// Ajouter l'en-tête d'autorisation
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", API_KEY))
+
+	// Paramètres de requête
+	q := req.URL.Query()
+	q.Add("limit", "100")
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("erreur requête API: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Read response body
-	body, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("statut HTTP invalide: %d", resp.StatusCode)
+	}
+
+	var response CoinCapResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("erreur parsing JSON: %v", err)
+	}
+
+	log.Printf("✅ Récupéré %d cryptomonnaies", len(response.Data))
+	return response.Data, nil
+}
+
+func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
+	// Formater les données pour Kafka
+	data := struct {
+		Symbol        string    `json:"symbol"`
+		Name          string    `json:"name"`
+		Price         float64   `json:"price"`
+		MarketCap     float64   `json:"marketCap"`
+		Volume24h     float64   `json:"volume24h"`
+		PriceChange24h float64  `json:"priceChange24h"`
+		Timestamp     string    `json:"timestamp"`
+	}{
+		Symbol:        crypto.Symbol,
+		Name:          crypto.Name,
+		Price:         crypto.CurrentPrice,
+		MarketCap:     crypto.MarketCap,
+		Volume24h:     crypto.Volume24h,
+		PriceChange24h: crypto.PriceChange24h,
+		Timestamp:     time.Now().Format(time.RFC3339),
+	}
+
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Printf("Failed to read response body: %v\n", err)
-		return
+		return fmt.Errorf("erreur marshalling JSON: %v", err)
 	}
 
-	// Define regex patterns for crypto name and price
-	cryptoPattern := regexp.MustCompile(`\(?https:\/\/www\.livecoinwatch\.com\/price\/([A-Za-z]+)-.*\)`)
-	pricePattern := regexp.MustCompile(`(?:https:\/\/www\.livecoinwatch\.com\/price\/[A-Za-z]+[-_].*\)\s*\|\s*\$)([0-9,.]+)`)
-
-	// Find all matches
-	cryptoMatches := cryptoPattern.FindAllStringSubmatch(string(body), -1)
-	priceMatches := pricePattern.FindAllStringSubmatch(string(body), -1)
-
-	// Store crypto prices in a map
-	cryptoPrices := make(map[string]string)
-	for i := range cryptoMatches {
-		if len(cryptoMatches[i]) > 1 && len(priceMatches[i]) > 1 {
-			cryptoName := cryptoMatches[i][1]
-			price := priceMatches[i][1]
-			cryptoPrices[cryptoName] = price
-		}
+	msg := &sarama.ProducerMessage{
+		Topic: "crypto-prices",
+		Key:   sarama.StringEncoder(crypto.Symbol),
+		Value: sarama.StringEncoder(jsonData),
 	}
 
-	// Send each crypto price to Kafka
-	for crypto, price := range cryptoPrices {
-		cryptoData := CryptoPrice{
-			Crypto: crypto,
-			Price:  price,
-			Site:   "livecoin",
-		}
+	partition, offset, err := producer.SendMessage(msg)
+	if err != nil {
+		return fmt.Errorf("erreur envoi message: %v", err)
+	}
 
-		// Convert data to JSON
-		message, err := json.Marshal(cryptoData)
+	log.Printf("✅ Données envoyées pour %s (prix: %.2f USD) sur partition %d à l'offset %d", 
+		crypto.Symbol, crypto.CurrentPrice, partition, offset)
+	return nil
+}
+
+func main() {
+	log.Printf("🚀 Démarrage du scraper...")
+	
+	producer, err := createKafkaProducer()
+	if err != nil {
+		log.Fatalf("❌ Erreur initialisation Kafka: %v", err)
+	}
+	defer producer.Close()
+
+	log.Printf("✅ Connexion à Kafka établie")
+
+	// Boucle principale
+	for {
+		cryptos, err := fetchCryptoData()
 		if err != nil {
-			fmt.Printf("Failed to serialize data: %v\n", err)
+			log.Printf("❌ Erreur récupération données: %v", err)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
-		// Produce message to Kafka
-		err = producer.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &[]string{"crypto-prices"}[0], Partition: kafka.PartitionAny},
-			Value:          message,
-		}, nil)
-
-		if err != nil {
-			fmt.Printf("Failed to produce message: %v\n", err)
-		} else {
-			fmt.Printf("Sent message to crypto-prices topic: %s\n", message)
+		for _, crypto := range cryptos {
+			if err := sendCryptoData(producer, crypto); err != nil {
+				log.Printf("❌ Erreur envoi données pour %s: %v", crypto.Symbol, err)
+			}
 		}
-	}
 
-	// Ensure all messages are sent
-	producer.Flush(15 * 1000)
+		log.Printf("💤 Attente de 10 secondes avant la prochaine mise à jour...")
+		time.Sleep(10 * time.Second)
+	}
 }
