@@ -1,0 +1,6 @@
+disks:
+  - mountpoint: /
+    read_iops: 2250000
+    write_iops: 650000
+    read_bandwidth: 2250MB
+    write_bandwidth: 700MB

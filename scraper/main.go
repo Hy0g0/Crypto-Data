@@ -6,41 +6,42 @@ import (
 	"log"
 	"net/http"
 	"time"
+
 	"github.com/Shopify/sarama"
 )
 
 type CoinCapResponse struct {
-	Data []CryptoData `json:"data"`
-	Timestamp int64   `json:"timestamp"`
+	Data      []CryptoData `json:"data"`
+	Timestamp int64        `json:"timestamp"`
 }
 
 type CryptoData struct {
-	ID               string  `json:"id"`
-	Symbol           string  `json:"symbol"`
-	Name             string  `json:"name"`
-	CurrentPrice     float64 `json:"priceUsd,string"`
-	MarketCap        float64 `json:"marketCapUsd,string"`
-	Volume24h        float64 `json:"volumeUsd24Hr,string"`
-	PriceChange24h   float64 `json:"changePercent24Hr,string"`
-	LastUpdated      string  `json:"timestamp"`
+	ID             string  `json:"id"`
+	Symbol         string  `json:"symbol"`
+	Name           string  `json:"name"`
+	CurrentPrice   float64 `json:"priceUsd,string"`
+	MarketCap      float64 `json:"marketCapUsd,string"`
+	Volume24h      float64 `json:"volumeUsd24Hr,string"`
+	PriceChange24h float64 `json:"changePercent24Hr,string"`
+	LastUpdated    string  `json:"timestamp"`
 }
 
 const (
 	BASE_URL = "https://api.coincap.io/v2/assets"
-	API_KEY  = "3282b43d-5f58-41de-a300-e049cc2fce0b"  // Obtenez une clé sur https://coincap.io/api-key
+	API_KEY  = "3282b43d-5f58-41de-a300-e049cc2fce0b" // Obtenez une clé sur https://coincap.io/api-key
 )
 
 func createKafkaProducer() (sarama.SyncProducer, error) {
 	log.Printf("🔄 Configuration du producteur Kafka...")
-	
+
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 5
-	
-	brokers := []string{"kafka:29092"}
+
+	brokers := []string{"kafka.kafka.svc.cluster.local:9092"}
 	log.Printf("📍 Tentative de connexion aux brokers: %v", brokers)
-	
+
 	var producer sarama.SyncProducer
 	var err error
 	for i := 0; i < 5; i++ {
@@ -74,21 +75,21 @@ func fetchCryptoData() ([]CryptoData, error) {
 func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
 	// Formater les données pour Kafka
 	data := struct {
-		Symbol        string    `json:"symbol"`
-		Name          string    `json:"name"`
-		Price         float64   `json:"price"`
-		MarketCap     float64   `json:"marketCap"`
-		Volume24h     float64   `json:"volume24h"`
-		PriceChange24h float64  `json:"priceChange24h"`
-		Timestamp     string    `json:"timestamp"`
+		Symbol         string  `json:"symbol"`
+		Name           string  `json:"name"`
+		Price          float64 `json:"price"`
+		MarketCap      float64 `json:"marketCap"`
+		Volume24h      float64 `json:"volume24h"`
+		PriceChange24h float64 `json:"priceChange24h"`
+		Timestamp      string  `json:"timestamp"`
 	}{
-		Symbol:        crypto.Symbol,
-		Name:          crypto.Name,
-		Price:         crypto.CurrentPrice,
-		MarketCap:     crypto.MarketCap,
-		Volume24h:     crypto.Volume24h,
+		Symbol:         crypto.Symbol,
+		Name:           crypto.Name,
+		Price:          crypto.CurrentPrice,
+		MarketCap:      crypto.MarketCap,
+		Volume24h:      crypto.Volume24h,
 		PriceChange24h: crypto.PriceChange24h,
-		Timestamp:     time.Now().Format(time.RFC3339),
+		Timestamp:      time.Now().Format(time.RFC3339),
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -107,14 +108,14 @@ func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
 		return fmt.Errorf("erreur envoi message: %v", err)
 	}
 
-	log.Printf("✅ Données envoyées pour %s (prix: %.2f USD) sur partition %d à l'offset %d", 
+	log.Printf("✅ Données envoyées pour %s (prix: %.2f USD) sur partition %d à l'offset %d",
 		crypto.Symbol, crypto.CurrentPrice, partition, offset)
 	return nil
 }
 
 func main() {
 	log.Printf("🚀 Démarrage du scraper...")
-	
+
 	producer, err := createKafkaProducer()
 	if err != nil {
 		log.Fatalf("❌ Erreur initialisation Kafka: %v", err)

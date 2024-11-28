@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redpanda-producer
-  namespace: producer
+  name: kafka-producer
+  namespace: kafka
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redpanda-producer
+      app: kafka-producer
   template:
     metadata:
       labels:
-        app: redpanda-producer
+        app: kafka-producer
     spec:
       containers:
-        - name: redpanda-producer
-          image: redpanda-producer:1.0.0
+        - name: kafka-producer
+          image: kafka-producer:1.0.0
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -24,11 +24,3 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
-          volumeMounts:
-            - name: tls-certificates
-              mountPath: /user-secret
-              readOnly: true
-      volumes:
-        - name: tls-certificates
-          secret:
-            secretName: redpanda-default-cert

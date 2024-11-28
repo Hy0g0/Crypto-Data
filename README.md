@@ -21,25 +21,17 @@
 
 ## Setup ## 
 
-Install cert-manager using Helm:
+Install kafka using Helm:
 
 ```bash
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-helm install cert-manager jetstack/cert-manager \
-  --set crds.enabled=true \
-  --namespace cert-manager  \
-  --create-namespace
+helm install kafka oci://registry-1.docker.io/bitnamicharts/kafka -n kafka\
+  --set metrics.jmx.enabled=true \
+  --set metrics.kafka.enabled=true \
+  --set metrics.serviceMonitor.enabled=true \
+  --set metrics.serviceMonitor.namespace=default \
+  --set metrics.prometheusRule.enabled=true \
+  --set metrics.prometheusRule.namespace="default"
 ```
-
-The Redpanda Helm chart enables TLS by default and uses cert-manager to manage TLS certificates.
-
-```bash
-kubectl create namespace redpanda
-kubectl create configmap redpanda-io-config --namespace redpanda --from-file=io-config.yaml
-
-```
-
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
