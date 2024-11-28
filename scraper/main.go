@@ -1,37 +1,72 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/your-project/config"
+	"github.com/your-project/models"
 )
 
-type CoinCapResponse struct {
-	Data      []CryptoData `json:"data"`
-	Timestamp int64        `json:"timestamp"`
+type App struct {
+	config   *config.Config
+	producer sarama.SyncProducer
+	client   *http.Client
 }
 
-type CryptoData struct {
-	ID             string  `json:"id"`
-	Symbol         string  `json:"symbol"`
-	Name           string  `json:"name"`
-	CurrentPrice   float64 `json:"priceUsd,string"`
-	MarketCap      float64 `json:"marketCapUsd,string"`
-	Volume24h      float64 `json:"volumeUsd24Hr,string"`
-	PriceChange24h float64 `json:"changePercent24Hr,string"`
-	LastUpdated    string  `json:"timestamp"`
+func NewApp(cfg *config.Config) (*App, error) {
+	producer, err := createKafkaProducer(cfg.KafkaBrokers)
+	if err != nil {
+		return nil, fmt.Errorf("erreur création producteur Kafka: %w", err)
+	}
+
+	return &App{
+		config:   cfg,
+		producer: producer,
+		client:   &http.Client{Timeout: 10 * time.Second},
+	}, nil
 }
 
-const (
-	BASE_URL = "https://api.coincap.io/v2/assets"
-	API_KEY  = "3282b43d-5f58-41de-a300-e049cc2fce0b" // Obtenez une clé sur https://coincap.io/api-key
-)
+func (a *App) Run(ctx context.Context) error {
+	log.Printf("🚀 Démarrage du scraper...")
+	
+	ticker := time.NewTicker(a.config.ScrapeInterval)
+	defer ticker.Stop()
 
-func createKafkaProducer() (sarama.SyncProducer, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if err := a.scrapeAndSend(ctx); err != nil {
+				log.Printf("❌ Erreur pendant le scraping: %v", err)
+			}
+		}
+	}
+}
+
+func (a *App) scrapeAndSend(ctx context.Context) error {
+	cryptos, err := a.fetchCryptoData(ctx)
+	if err != nil {
+		return fmt.Errorf("erreur récupération données: %w", err)
+	}
+
+	for _, crypto := range cryptos {
+		if err := a.sendCryptoData(crypto); err != nil {
+			log.Printf("❌ Erreur envoi données pour %s: %v", crypto.Symbol, err)
+		}
+	}
+	return nil
+}
+
+func createKafkaProducer(brokers []string) (sarama.SyncProducer, error) {
 	log.Printf("🔄 Configuration du producteur Kafka...")
 
 	config := sarama.NewConfig()
@@ -39,40 +74,38 @@ func createKafkaProducer() (sarama.SyncProducer, error) {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 5
 
-	brokers := []string{"kafka.kafka.svc.cluster.local:9092"}
 	log.Printf("📍 Tentative de connexion aux brokers: %v", brokers)
 
-	var producer sarama.SyncProducer
-	var err error
-	for i := 0; i < 5; i++ {
-		producer, err = sarama.NewSyncProducer(brokers, config)
-		if err == nil {
-			return producer, nil
-		}
-		log.Printf("Tentative %d échouée: %v. Nouvelle tentative dans 5 secondes...", i+1, err)
-		time.Sleep(5 * time.Second)
+	producer, err := sarama.NewSyncProducer(brokers, config)
+	if err != nil {
+		return nil, fmt.Errorf("erreur création producteur après 5 tentatives: %v", err)
 	}
-	return nil, fmt.Errorf("erreur création producteur après 5 tentatives: %v", err)
+
+	log.Printf("✅ Connexion à Kafka établie")
+	return producer, nil
 }
 
-func fetchCryptoData() ([]CryptoData, error) {
-	resp, err := http.Get("https://api.coincap.io/v2/assets")
+func (a *App) fetchCryptoData(ctx context.Context) ([]models.CryptoData, error) {
+	resp, err := http.NewRequestWithContext(ctx, http.MethodGet, a.config.BaseURL, nil)
 	if err != nil {
-		time.Sleep(1 * time.Millisecond)
+		return nil, err
+	}
+
+	resp, err = a.client.Do(resp)
+	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var response CoinCapResponse
+	var response models.CoinCapResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		time.Sleep(1 * time.Millisecond)
 		return nil, err
 	}
 
 	return response.Data, nil
 }
 
-func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
+func (a *App) sendCryptoData(crypto models.CryptoData) error {
 	// Formater les données pour Kafka
 	data := struct {
 		Symbol         string  `json:"symbol"`
@@ -98,12 +131,12 @@ func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
 	}
 
 	msg := &sarama.ProducerMessage{
-		Topic: "crypto-prices",
+		Topic: a.config.KafkaTopic,
 		Key:   sarama.StringEncoder(crypto.Symbol),
 		Value: sarama.StringEncoder(jsonData),
 	}
 
-	partition, offset, err := producer.SendMessage(msg)
+	partition, offset, err := a.producer.SendMessage(msg)
 	if err != nil {
 		return fmt.Errorf("erreur envoi message: %v", err)
 	}
@@ -114,32 +147,27 @@ func sendCryptoData(producer sarama.SyncProducer, crypto CryptoData) error {
 }
 
 func main() {
-	log.Printf("🚀 Démarrage du scraper...")
-
-	producer, err := createKafkaProducer()
+	cfg := config.NewConfig()
+	
+	app, err := NewApp(cfg)
 	if err != nil {
-		log.Fatalf("❌ Erreur initialisation Kafka: %v", err)
+		log.Fatalf("❌ Erreur initialisation application: %v", err)
 	}
-	defer producer.Close()
+	defer app.producer.Close()
 
-	log.Printf("✅ Connexion à Kafka établie")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Boucle principale
-	for {
-		cryptos, err := fetchCryptoData()
-		if err != nil {
-			log.Printf("❌ Erreur récupération données: %v", err)
-			time.Sleep(1 * time.Millisecond)
-			continue
-		}
+	// Gestion gracieuse de l'arrêt
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	go func() {
+		<-sigChan
+		cancel()
+	}()
 
-		for _, crypto := range cryptos {
-			if err := sendCryptoData(producer, crypto); err != nil {
-				log.Printf("❌ Erreur envoi données pour %s: %v", crypto.Symbol, err)
-			}
-		}
-
-		log.Printf("💤 Attente de 1ms avant la prochaine mise à jour...")
-		time.Sleep(1 * time.Millisecond)
+	if err := app.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		log.Fatalf("❌ Erreur fatale: %v", err)
 	}
 }
