@@ -36,3 +36,8 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+tasks.register('runConsumer', JavaExec) {
+    mainClass.set('epitech.mpl10.Consumer')
+    classpath = sourceSets.main.runtimeClasspath
+}
