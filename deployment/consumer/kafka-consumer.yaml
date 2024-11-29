@@ -24,11 +24,3 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
-          volumeMounts:
-            - name: tls-certificates
-              mountPath: /user-secret
-              readOnly: true
-      volumes:
-        - name: tls-certificates
-          secret:
-            secretName: kafka-default-cert
