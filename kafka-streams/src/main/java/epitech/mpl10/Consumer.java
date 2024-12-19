@@ -7,6 +7,8 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -15,10 +17,15 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 public class Consumer {
-    public static void main(String[] args) throws IOException {
+    private static final Logger LOG = LoggerFactory.getLogger(Consumer.class);
+
+    public static void main(String[] args) {
         Properties streamsProps = new Properties();
         try (FileInputStream fis = new FileInputStream("src/main/resources/streams.properties")) {
             streamsProps.load(fis);
+        } catch (IOException e) {
+            LOG.error("Error while loading the streams.properties file. Make sure you have it properly configured.");
+            throw new RuntimeException(e);
         }
         streamsProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "pandascore-data");
 
