@@ -15,7 +15,23 @@ public class DataGenerator {
 
     private DataGenerator() {}
 
-    public static Map<String, Object> generateRandomContent() {
+    public static Collection<String> generateLolMatchEvents(final int numberOfEvents) {
+        int counter = 0;
+        final List<String> lolMatchEvents = new ArrayList<>();
+
+        while (counter++ < numberOfEvents) {
+            try {
+                String jsonContent = objectMapper.writeValueAsString(generateRandomLolEvent());
+                lolMatchEvents.add(jsonContent);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return lolMatchEvents;
+    }
+
+    private static Map<String, Object> generateRandomLolEvent() {
         Map<String, Object> content = new HashMap<>();
 
         content.put("id", UUID.randomUUID().toString());
@@ -86,7 +102,7 @@ public class DataGenerator {
 
     public static void main(String[] args) {
         try {
-            String jsonContent = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(generateRandomContent());
+            String jsonContent = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(generateRandomLolEvent());
             System.out.println(jsonContent);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
