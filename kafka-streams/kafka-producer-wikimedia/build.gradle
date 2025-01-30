@@ -35,3 +35,8 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+tasks.register('runProducer', JavaExec) {
+    mainClass.set('epitech.mpl10.WikimediaChangesProducer')
+    classpath = sourceSets.main.runtimeClasspath
+}
