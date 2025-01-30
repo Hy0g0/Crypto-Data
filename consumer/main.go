@@ -12,17 +12,29 @@ import (
 
 // Kafka config
 var kafkaBrokers = []string{"kafka.kafka.svc.cluster.local:9092"}
-var kafkaTopic = "matches"
-var kafkaGroup = "matches"
+var kafkaTopic = "wikimedia.recentchange"
+var kafkaGroup = "wikimedia"
 
 // ClickHouse config
 var ctx = context.Background()
 
 // Define your message structure
 type Message struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Details string `json:"details"`
+	ID               uint64 `json:"id"`
+	Type             string `json:"type"`
+	Namespace        uint64 `json:"namespace"`
+	Title            string `json:"title"`
+	TitleURL         string `json:"title_url"`
+	Comment          string `json:"comment"`
+	Timestamp        int64  `json:"timestamp"`
+	User             string `json:"user"`
+	Bot              bool   `json:"bot"`
+	NotifyURL        string `json:"notify_url"`
+	ServerURL        string `json:"server_url"`
+	ServerName       string `json:"server_name"`
+	ServerScriptPath string `json:"server_script_path"`
+	Wiki             string `json:"wiki"`
+	ParsedComment    string `json:"parsedcomment"`
 }
 
 func main() {
@@ -76,17 +88,25 @@ func main() {
 			log.Println("Error inserting into ClickHouse:", err)
 		}
 	}
+
 }
 
 // Function to insert message into ClickHouse
 func insertIntoClickHouse(conn clickhouse.Conn, message Message) error {
-	// Make sure the database is selected with the DSN
+	query := `
+        INSERT INTO wiki (
+            id, type, namespace, title, title_url, comment, timestamp, 
+            user, bot, notify_url, server_url, server_name, 
+            server_script_path, wiki, parsedcomment
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
 
-	query := fmt.Sprintf("INSERT INTO messages (id, name, details) VALUES (%d, '%s', '%s')",
-		message.ID, message.Name, message.Details)
-
-	// Execute query
-	err := conn.Exec(ctx, query)
+	err := conn.Exec(ctx, query,
+		message.ID, message.Type, message.Namespace, message.Title,
+		message.TitleURL, message.Comment, message.Timestamp, message.User,
+		message.Bot, message.NotifyURL, message.ServerURL, message.ServerName,
+		message.ServerScriptPath, message.Wiki, message.ParsedComment,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to insert into ClickHouse: %v", err)
 	}

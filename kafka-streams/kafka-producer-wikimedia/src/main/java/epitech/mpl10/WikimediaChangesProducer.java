@@ -18,7 +18,7 @@ public class WikimediaChangesProducer {
     private static final String SOURCE_URL = "https://stream.wikimedia.org/v2/stream/recentchange";
 
     static {
-        String bootstrapServers = "localhost:29092,localhost:39092,localhost:49092";
+        String bootstrapServers = "kafka.kafka.svc.cluster.local:9092";
 
         Properties properties = new Properties();
         properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
