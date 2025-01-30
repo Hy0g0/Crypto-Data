@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group = 'java.epitech.mpl10'
+group = 'epitech.mpl10.consumer'
 version = '1.0-SNAPSHOT'
 
 repositories {
@@ -31,24 +31,8 @@ dependencies {
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
-
-    // https://mvnrepository.com/artifact/net.datafaker/datafaker
-    implementation 'net.datafaker:datafaker:2.4.2'
-
-    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.18.2'
-
-    // https://mvnrepository.com/artifact/org.json/json
-    implementation 'org.json:json:20250107'
 }
 
 test {
     useJUnitPlatform()
-}
-
-tasks.register('runConsumer', JavaExec) {
-    mainClass.set('epitech.mpl10.Consumer')
-    classpath = sourceSets.main.runtimeClasspath
 }

@@ -14,7 +14,8 @@ import java.util.concurrent.TimeUnit;
 public class WikimediaChangesProducer {
 
     private static final KafkaProducer<String, String> kafkaProducer;
-    private static final String topic = "wikimedia.recentchange";
+    private static final String WIKIMEDDIA_RECENTCHANGE_TOPIC = "wikimedia.recentchange";
+    private static final String SOURCE_URL = "https://stream.wikimedia.org/v2/stream/recentchange";
 
     static {
         String bootstrapServers = "localhost:29092,localhost:39092,localhost:49092";
@@ -28,16 +29,14 @@ public class WikimediaChangesProducer {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        BackgroundEventHandler eventHandler = new WikimediaChangeHandler(kafkaProducer, topic);
-        String url = "https://stream.wikimedia.org/v2/stream/recentchange";
-        EventSource.Builder eventSourceBuilder = new EventSource.Builder(URI.create(url));
+        BackgroundEventHandler eventHandler = new WikimediaChangeHandler(kafkaProducer, WIKIMEDDIA_RECENTCHANGE_TOPIC);
+        EventSource.Builder eventSourceBuilder = new EventSource.Builder(URI.create(SOURCE_URL));
         BackgroundEventSource.Builder backgroundEventSourceBuilder = new BackgroundEventSource.Builder(eventHandler, eventSourceBuilder);
         BackgroundEventSource backgroundEventSource = backgroundEventSourceBuilder.build();
 
         // Start the Producer in another thread
         backgroundEventSource.start();
 
-        // We produce for 10 minutes and block the program until then
-        TimeUnit.MINUTES.sleep(10);
+        TimeUnit.MINUTES.sleep(20);
     }
 }
